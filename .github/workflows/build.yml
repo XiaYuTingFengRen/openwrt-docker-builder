@@ -1,0 +1,52 @@
+
+name: Build OpenWrt Docker Image
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up environment
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential clang flex bison g++ gawk             gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev             python3-distutils rsync unzip zlib1g-dev python3 python3-pip
+
+      - name: Clone OpenWrt
+        run: |
+          git clone https://github.com/openwrt/openwrt.git
+          cd openwrt
+          git checkout v23.05.3
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          cp ../target.config .config
+          make defconfig
+
+      - name: Build OpenWrt RootFS
+        run: |
+          cd openwrt
+          make -j$(nproc) download
+          make -j$(nproc)
+
+      - name: Build Docker Image
+        run: |
+          cd openwrt
+          mkdir docker-rootfs
+          tar -xzf bin/targets/*/*/*-rootfs.tar.gz -C docker-rootfs
+          cp ../docker.Dockerfile docker-rootfs/Dockerfile
+          cd docker-rootfs
+          docker build -t openwrt-aarch64-full .
+
+      - name: Save Docker Image
+        run: |
+          docker save openwrt-aarch64-full | gzip > openwrt-aarch64-full.tar.gz
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: openwrt-docker-image
+          path: openwrt-aarch64-full.tar.gz
