@@ -46,7 +46,7 @@ jobs:
           docker save openwrt-aarch64-full | gzip > openwrt-aarch64-full.tar.gz
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: openwrt-docker-image
           path: openwrt-aarch64-full.tar.gz
